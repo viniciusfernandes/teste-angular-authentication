@@ -23,13 +23,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import br.com.teste.angular.security.authentication.JwtAuthenticationDto;
+import br.com.teste.angular.security.authentication.JwtLogin;
 import br.com.teste.angular.security.authentication.JwtToken;
 import br.com.teste.angular.security.authentication.JwtTokenUtil;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin
 public class AuthenticationController {
 
 	private static final Logger log = LoggerFactory.getLogger(AuthenticationController.class);
@@ -48,14 +48,14 @@ public class AuthenticationController {
 	/**
 	 * Gera e retorna um novo token JWT.
 	 * 
-	 * @param authenticationDto
+	 * @param login
 	 * @param result
 	 * @return ResponseEntity<Response<TokenDto>>
 	 * @throws AuthenticationException
 	 */
 	@PostMapping
-	public ResponseEntity<Response<JwtToken>> gerarTokenJwt(@Valid @RequestBody JwtAuthenticationDto authenticationDto,
-			BindingResult result) throws AuthenticationException {
+	public ResponseEntity<Response<JwtToken>> gerarTokenJwt(@Valid @RequestBody JwtLogin login, BindingResult result)
+			throws AuthenticationException {
 		Response<JwtToken> response = new Response<JwtToken>();
 
 		if (result.hasErrors()) {
@@ -64,12 +64,12 @@ public class AuthenticationController {
 			return ResponseEntity.badRequest().body(response);
 		}
 
-		log.info("Gerando token para o email {}.", authenticationDto.getEmail());
-		Authentication authentication = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(authenticationDto.getEmail(), authenticationDto.getSenha()));
+		log.info("Gerando token para o email {}.", login.getEmail());
+		Authentication authentication = authenticationManager
+				.authenticate(new UsernamePasswordAuthenticationToken(login.getEmail(), login.getSenha()));
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 
-		UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationDto.getEmail());
+		UserDetails userDetails = userDetailsService.loadUserByUsername(login.getEmail());
 		String token = jwtTokenUtil.obterToken(userDetails);
 		response.setData(new JwtToken(token));
 

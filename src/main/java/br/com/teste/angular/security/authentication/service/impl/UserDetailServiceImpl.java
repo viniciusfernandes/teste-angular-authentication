@@ -24,7 +24,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
 		Usuario u = usuarioService.buscarPorEmail(username);
 		if (u != null) {
-			return JwtUserFactory.getUser(u);
+			return JwtUserFactory.gerarJwtUser(u);
 		}
 
 		throw new UsernameNotFoundException("Usuário \"" + username + "\" não encontrado.");

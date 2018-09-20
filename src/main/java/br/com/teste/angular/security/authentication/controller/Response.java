@@ -30,4 +30,11 @@ public class Response<T> {
 		this.errors = errors;
 	}
 
+	public void addError(String error) {
+		if (this.errors == null) {
+			this.errors = new ArrayList<>();
+		}
+		this.errors.add(error);
+	}
+
 }
