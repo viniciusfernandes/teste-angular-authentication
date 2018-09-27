@@ -8,4 +8,6 @@ public interface UsuarioService {
 
 	Long inserir(Usuario usuario);
 
+	void deleteAll();
+
 }

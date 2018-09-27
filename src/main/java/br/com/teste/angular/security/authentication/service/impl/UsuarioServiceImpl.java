@@ -28,5 +28,12 @@ public class UsuarioServiceImpl implements UsuarioService {
 	public Long inserir(Usuario usuario) {
 		return usuarioDAO.save(usuario).getId();
 	}
+	
+
+	@Transactional(readOnly = false)
+	@Override
+	public void deleteAll() {
+		usuarioDAO.deleteAll();
+	}
 
 }

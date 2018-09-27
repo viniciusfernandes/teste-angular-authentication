@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 
 import br.com.teste.angular.security.authentication.SenhaUtils;
 import br.com.teste.angular.security.authentication.entity.Usuario;
@@ -24,6 +23,8 @@ public class TesteAngularAuthenticationApplication {
 	public CommandLineRunner commandLineRunner() {
 		return args -> {
 
+			usuarioService.deleteAll();
+			
 			Usuario usuario = new Usuario();
 			usuario.setEmail("usuario@email.com");
 			usuario.setPerfil(PerfilEnum.ROLE_USUARIO);

@@ -8,18 +8,23 @@ import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -70,10 +75,30 @@ public class AuthenticationController {
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 
 		UserDetails userDetails = userDetailsService.loadUserByUsername(login.getEmail());
-		String token = jwtTokenUtil.obterToken(userDetails);
-		response.setData(new JwtToken(token));
+		JwtToken jwtToken = new JwtToken(jwtTokenUtil.obterToken(userDetails));
 
+		for (GrantedAuthority auth : userDetails.getAuthorities()) {
+			jwtToken.addRole(auth.getAuthority());
+		}
+
+		response.setData(jwtToken);
 		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/token/expirado")
+	public ResponseEntity<Response<Boolean>> verificarTokeExpirado(@RequestHeader HttpHeaders headers) {
+		String token = headers.get("Authorization").get(0);
+		Response<Boolean> resp = new Response<>();
+		if (token == null || token.length() <= 7) {
+			resp.setData(true);
+			return new ResponseEntity<>(resp, HttpStatus.BAD_REQUEST);
+		} else {
+
+			token = token.substring(7);
+			resp.setData(jwtTokenUtil.isTokenExpirado(token));
+			return ResponseEntity.ok().body(resp);
+		}
+
 	}
 
 	/**
@@ -83,7 +108,7 @@ public class AuthenticationController {
 	 * @return ResponseEntity<Response<TokenDto>>
 	 */
 	@PostMapping(value = "/refresh")
-	public ResponseEntity<Response<JwtToken>> gerarRefreshTokenJwt(HttpServletRequest request) {
+	public ResponseEntity<Response<JwtToken>> refreshTokenJwt(HttpServletRequest request) {
 		log.info("Gerando refresh token JWT.");
 		Response<JwtToken> response = new Response<JwtToken>();
 		Optional<String> token = Optional.ofNullable(request.getHeader(TOKEN_HEADER));
@@ -94,7 +119,7 @@ public class AuthenticationController {
 
 		if (!token.isPresent()) {
 			response.getErrors().add("Token não informado.");
-		} else if (!jwtTokenUtil.tokenValido(token.get())) {
+		} else if (jwtTokenUtil.isTokenExpirado(token.get())) {
 			response.getErrors().add("Token inválido ou expirado.");
 		}
 

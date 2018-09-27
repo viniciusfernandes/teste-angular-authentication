@@ -18,6 +18,8 @@ public class JwtTokenUtil {
 	static final String CLAIM_KEY_USERNAME = "sub";
 	static final String CLAIM_KEY_ROLE = "role";
 	static final String CLAIM_KEY_CREATED = "created";
+	static final String CLAIM_KEY_TYPE = "typ";
+	static final String CLAIM_KEY_ISSUE = "iss";
 
 	@Value("${jwt.secret}")
 	private String secret;
@@ -47,16 +49,10 @@ public class JwtTokenUtil {
 	 * 
 	 * @param token
 	 * @return Date
+	 * @throws JwtClaimExtractionException
 	 */
-	public Date getExpirationDateFromToken(String token) {
-		Date expiration;
-		try {
-			Claims claims = getClaimsFromToken(token);
-			expiration = claims.getExpiration();
-		} catch (Exception e) {
-			expiration = null;
-		}
-		return expiration;
+	private Date getExpirationDateFromToken(String token) throws JwtClaimExtractionException {
+		return getClaimsFromToken(token).getExpiration();
 	}
 
 	/**
@@ -69,22 +65,11 @@ public class JwtTokenUtil {
 		String refreshedToken;
 		try {
 			Claims claims = getClaimsFromToken(token);
-			claims.put(CLAIM_KEY_CREATED, new Date());
-			refreshedToken = gerarToken(claims);
+			refreshedToken = gerarToken(claims.getSubject(), claims.get("role", String.class));
 		} catch (Exception e) {
 			refreshedToken = null;
 		}
 		return refreshedToken;
-	}
-
-	/**
-	 * Verifica e retorna se um token JWT é válido.
-	 * 
-	 * @param token
-	 * @return boolean
-	 */
-	public boolean tokenValido(String token) {
-		return !tokenExpirado(token);
 	}
 
 	/**
@@ -94,12 +79,8 @@ public class JwtTokenUtil {
 	 * @return String
 	 */
 	public String obterToken(UserDetails userDetails) {
-		Map<String, Object> claims = new HashMap<>();
-		claims.put(CLAIM_KEY_USERNAME, userDetails.getUsername());
-		userDetails.getAuthorities().forEach(authority -> claims.put(CLAIM_KEY_ROLE, authority.getAuthority()));
-		claims.put(CLAIM_KEY_CREATED, new Date());
-
-		return gerarToken(claims);
+		final String role = userDetails.getAuthorities().iterator().next().getAuthority();
+		return gerarToken(userDetails.getUsername(), role);
 	}
 
 	/**
@@ -109,14 +90,12 @@ public class JwtTokenUtil {
 	 * @param token
 	 * @return Claims
 	 */
-	private Claims getClaimsFromToken(String token) {
-		Claims claims;
+	private Claims getClaimsFromToken(String token) throws JwtClaimExtractionException {
 		try {
-			claims = Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+			return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
 		} catch (Exception e) {
-			claims = null;
+			throw new JwtClaimExtractionException("Falha parse do claim do token", e);
 		}
-		return claims;
 	}
 
 	/**
@@ -134,8 +113,14 @@ public class JwtTokenUtil {
 	 * @param token
 	 * @return boolean
 	 */
-	private boolean tokenExpirado(String token) {
-		Date dataExpiracao = this.getExpirationDateFromToken(token);
+	public boolean isTokenExpirado(String token) {
+		Date dataExpiracao;
+		try {
+			dataExpiracao = this.getExpirationDateFromToken(token);
+		} catch (JwtClaimExtractionException e) {
+			return true;
+		}
+
 		if (dataExpiracao == null) {
 			return false;
 		}
@@ -148,9 +133,16 @@ public class JwtTokenUtil {
 	 * @param claims
 	 * @return String
 	 */
-	private String gerarToken(Map<String, Object> claims) {
-		return Jwts.builder().setClaims(claims).setExpiration(gerarDataExpiracao())
-				.signWith(SignatureAlgorithm.HS512, secret).compact();
+	private String gerarToken(String email, String role) {
+		Map<String, Object> header = new HashMap<>();
+		header.put("typ", "JWT");
+
+		Map<String, Object> claims = new HashMap<>();
+		claims.put("role", role);
+		claims.put("iat", new Date());
+
+		return Jwts.builder().setHeader(header).setClaims(claims).setIssuer("teste-angular").setSubject(email)
+				.setExpiration(gerarDataExpiracao()).signWith(SignatureAlgorithm.HS512, secret).compact();
 	}
 
 }
