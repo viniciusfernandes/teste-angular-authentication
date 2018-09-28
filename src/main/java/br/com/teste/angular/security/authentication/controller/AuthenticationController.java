@@ -89,14 +89,16 @@ public class AuthenticationController {
 	public ResponseEntity<Response<Boolean>> verificarTokeExpirado(@RequestHeader HttpHeaders headers) {
 		String token = headers.get("Authorization").get(0);
 		Response<Boolean> resp = new Response<>();
-		if (token == null || token.length() <= 7) {
-			resp.setData(true);
-			return new ResponseEntity<>(resp, HttpStatus.BAD_REQUEST);
-		} else {
 
-			token = token.substring(7);
-			resp.setData(jwtTokenUtil.isTokenExpirado(token));
+		boolean valido = token != null && token.length() > 7
+				&& !jwtTokenUtil.isTokenExpirado(token = token.substring(7));
+
+		resp.setData(valido);
+
+		if (valido) {
 			return ResponseEntity.ok().body(resp);
+		} else {
+			return new ResponseEntity<>(resp, HttpStatus.BAD_REQUEST);
 		}
 
 	}
